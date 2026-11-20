@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#DCBE96">
+<title>校园闲置</title>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>if(typeof mqtt==='undefined'){document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></scr'+'ipt>');}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 电脑端品牌介绍区（仅宽屏显示） -->
+<div class="desktop-brand">
+  <div class="db-logo">🦢</div>
+  <h1>闲置小市集</h1>
+  <p class="db-slogan">让闲置在校园里流动起来</p>
+  <div class="db-rows">
+    <div class="db-row"><span class="db-ico" style="background:#FDE7D5;">🛍️</span><div><b>闲置交易</b><span>发布、搜索、下单、校内站点自提全流程</span></div></div>
+    <div class="db-row"><span class="db-ico" style="background:#E3F0DF;">💬</span><div><b>真人聊天</b><span>买卖双方实时对话，离线消息不丢失</span></div></div>
+    <div class="db-row"><span class="db-ico" style="background:#EDE4F3;">🦢</span><div><b>闲鹅广场</b><span>水聊发帖、点赞收藏评论，校园生活分享</span></div></div>
+    <div class="db-row"><span class="db-ico" style="background:var(--latte-bg);">🧾</span><div><b>订单管理</b><span>待发货 / 待验货 / 已完成状态全程跟踪</span></div></div>
+  </div>
+  <div class="db-tip">左侧为手机实机预览 · 手机端体验更佳</div>
+</div>
+
+<div class="screen" id="screen">
+
+<!-- 启动页 -->
+<div class="view" id="view-splash">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <div class="logo-wrap">
+      <svg class="open-lines" viewBox="0 0 190 190">
+        <g stroke="#C9A87E" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M20 60 Q28 52 38 56" stroke-dasharray="4 5"/>
+          <path d="M170 60 Q162 52 152 56" stroke-dasharray="4 5"/>
+          <path d="M14 118 L2 118"/><path d="M176 118 L188 118"/>
+          <path d="M30 24 Q36 14 46 18" stroke-dasharray="3 4"/>
+          <path d="M160 24 Q154 14 144 18" stroke-dasharray="3 4"/>
+          <circle cx="8" cy="86" r="3" fill="#E9945A" stroke="none"/>
+          <circle cx="182" cy="86" r="3" fill="#C9A87E" stroke="none"/>
+          <circle cx="95" cy="8" r="3" fill="#E9945A" stroke="none"/>
+        </g>
+      </svg>
+      <div class="logo-circle">
+        <img src="img/logo.jpg" alt="闲鹅">
+      </div>
+    </div>
+    <div class="app-name">校园闲置</div>
+    <div class="app-slogan">让闲置在校园里流动起来</div>
+    <div class="tap-hint">点击任意位置进入</div>
+    <div class="splash-dots"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<!-- 登录页 -->
+<div class="view" id="view-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="img/logo.jpg" alt="闲鹅">
+    </div>
+    <div class="login-title">闲鹅 · 校园闲置</div>
+    <div class="login-sub">登录后和大家共享同一个市集</div>
+    <span class="net-pill" id="loginNet"><i></i>连接中…</span>
+    <input class="login-input" id="liName" maxlength="16" placeholder="昵称 / 用户名">
+    <input class="login-input" id="liPass" type="password" maxlength="24" placeholder="密码（首次输入即注册）">
+    <div class="login-err" id="loginErr"></div>
+    <div class="btn btn-orange login-btn" id="liGo">登录 / 注册</div>
+    <div class="login-hint">首次使用：输入昵称和密码即自动注册<br>体验卖家账号：爱整理的小周 / 123456<br>密码仅用于区分身份，请勿使用常用密码</div>
+  </div>
+</div>
+
+<!-- 首页 -->
+<div class="view" id="view-home">
+  <div class="home-top">
+      <div class="home-hello">
+        <h2>闲置小市集</h2>
+        <div class="home-tools">
+          <span class="net-pill on-coffee" id="homeNet"><i></i>连接中…</span>
+          <div class="ann-btn" id="annBtn"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2l4 4V5L6 9H4a1 1 0 0 0-1 1z"/><path d="M14 9a5 5 0 0 1 0 6"/><path d="M17 6a9 9 0 0 1 0 12"/></svg></div>
+        </div>
+      </div>
+      <div class="search" id="homeSearchBox">
+        <svg class="ic" width="17" height="17" viewBox="0 0 24 24" style="color:var(--text3);flex-shrink:0;"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="searchInput" placeholder="搜索闲置物品" readonly>
+      </div>
+  </div>
+  <!-- 频道导航：直接平铺在首页（闲鱼样式） -->
+  <div class="home-channels" id="homeChannels">
+    <div class="hc-scroll hc-tabs" id="hcTabs"></div>
+    <div class="hc-scroll hc-icos" id="hcIcos"></div>
+    <div class="hc-more" id="homeFilterBtn" title="全部频道"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+  <div class="filter-chips" id="filterChips" style="display:none;"></div>
+  <div class="home-body">
+    <div class="sec-title" id="homeSecTitle">闲鹅校园二手APP</div>
+    <div class="goods-grid" id="goodsGrid"></div>
+  </div>
+  <!-- 首页筛选频道面板（闲鱼频道弹窗样式） -->
+  <div class="overlay home-filter-overlay" id="homeFilterOverlay">
+    <div class="hf-sheet">
+      <div class="hf-head">
+        <b>筛选频道</b>
+        <span class="hf-sub">点击标签即刻筛选 · 再点一次取消</span>
+        <div class="cs-close" id="hfClose">✕</div>
+      </div>
+      <div class="hf-group">
+        <div class="hf-gtitle">排序与筛选</div>
+        <div class="hf-tags" id="hfSortTags"></div>
+      </div>
+      <div class="hf-group">
+        <div class="hf-gtitle">商品大类</div>
+        <div class="hf-tags" id="hfCatTags"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 搜索结果页：只有搜索框和搜索出的商品 -->
+<div class="view" id="view-search">
+  <div class="navbar" style="border-bottom:1px solid var(--line);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">搜索闲置</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="search-page-top">
+    <div class="search search-page">
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" style="color:var(--text3);flex-shrink:0;"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="searchInput2" placeholder="搜索闲置物品">
+      <span class="s-clear" id="searchClear2" style="display:none;">✕</span>
+    </div>
+    <div class="hot-sec" id="hotSec">
+      <div class="hot-title">🔥 热门搜索</div>
+      <div class="hot-tags" id="hotTags"></div>
+    </div>
+    <div class="cat-sec">
+      <div class="hot-title">🗂️ 按分类挑选</div>
+      <div class="cat-pick" id="catPick"></div>
+      <div class="cat-pick" id="catPickSubs"></div>
+    </div>
+  </div>
+  <div class="filter-chips" id="searchChips" style="display:none;"></div>
+  <div class="home-body search-body">
+    <div class="goods-grid" id="searchGrid"></div>
+  </div>
+</div>
+
+<!-- 他人个人主页 -->
+<div class="view" id="view-userpage">
+  <div class="navbar" style="border-bottom:1px solid var(--line);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">个人主页</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="userpage-body">
+    <div class="card up-head">
+      <div class="avatar" id="upAvatar" style="width:62px;height:62px;font-size:22px;">?</div>
+      <div class="up-info">
+        <div class="up-name" id="upName"></div>
+        <div class="up-bio" id="upBio"></div>
+        <div class="up-pill-row">
+          <span class="up-pill" id="upOnlinePill"><i class="dot-off"></i>离线</span>
+          <span class="up-pill good" id="upRatePill">好评率 –</span>
+        </div>
+      </div>
+    </div>
+    <div class="card up-stats">
+      <div class="us"><b id="usSell">0</b><span>卖出</span></div>
+      <i></i>
+      <div class="us"><b id="usBuy">0</b><span>买入</span></div>
+      <i></i>
+      <div class="us"><b id="usOnSale">0</b><span>在售</span></div>
+    </div>
+    <div class="card up-online">
+      <div class="uo"><b id="upDaily">–</b><span>日均在线</span></div>
+      <i></i>
+      <div class="uo"><b id="upHours">–</b><span>常规在线</span></div>
+      <i></i>
+      <div class="uo"><b id="upReply">–</b><span>平均回复</span></div>
+    </div>
+    <div class="sec-title up-sec">正在出售 · <span id="upCount">0</span> 件</div>
+    <div class="goods-grid" id="upGoods"></div>
+  </div>
+</div>
+
+<!-- 版本公告页 -->
+<div class="view" id="view-changelog">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">版本公告</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="log-list" id="logList"></div>
+</div>
+
+<!-- 闲鹅广场页 -->
+<div class="view" id="view-plaza">
+  <div class="plaza-top">
+    <div class="plaza-head">
+      <span class="plaza-logo">🦢</span>
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:800;color:var(--brown);">闲鹅广场</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">水聊 · 求组队 · 拼单 · 校园日常</div>
+      </div>
+      <div class="btn btn-orange" style="height:34px;padding:0 14px;font-size:12px;border-radius:17px;" id="plazaNewBtn">＋ 发帖</div>
+    </div>
+    <div class="plaza-tabs">
+    <span class="plaza-tab on" data-mode="posts">帖子</span>
+    <span class="plaza-tab" data-mode="likes">我的点赞</span>
+    <span class="plaza-tab" data-mode="favs">我的收藏</span>
+    </div>
+  </div>
+  <div class="msg-list" id="plazaList"></div>
+</div>
+
+<!-- 商品详情页 -->
+<div class="view" id="view-detail">
+  <div class="detail-img" id="dImg">
+    <div class="toolrow">
+      <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+      <div class="back" id="dShare"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></div>
+    </div>
+    <span id="dEmoji">📚</span>
+  </div>
+  <div class="detail-body">
+    <div class="price-row"><span class="p" id="dPrice"><small>¥</small>18.00</span><span class="chip orange" id="dCanCut">可小刀</span></div>
+    <div class="rec-tag" id="dRec" style="display:none;">🦢 闲鹅推荐价 <b id="dRecVal"></b></div>
+    <div class="detail-title" id="dTitle"></div>
+    <div class="meta-row" id="dMeta"></div>
+    <div class="d-stats" id="dViews"></div>
+    <div class="card seller">
+      <div class="avatar" style="width:42px;height:42px;font-size:14px;" id="dAvatar">周</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;" id="dOwner"></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="dOwnerSub"></div>
+      </div>
+    </div>
+    <div class="desc-box" id="dDesc"></div>
+    <div class="d-trade-note" id="dTradeNote"></div>
+  </div>
+  <div class="detail-btns" id="dBtns">
+    <div class="icon-btn" id="dFav"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.4 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9z"/></svg><span>收藏</span></div>
+    <div class="btn btn-latte" id="dContactSeller">联系卖家</div>
+    <div class="btn btn-orange" id="dBuy">立即下单</div>
+  </div>
+</div>
+
+<!-- 聊天对话页 -->
+<div class="view" id="view-chat">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div id="cPeerBox" style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;min-width:0;">
+      <div class="avatar" id="cPeerAva" style="width:34px;height:34px;font-size:13px;flex-shrink:0;">?</div>
+      <div style="min-width:0;">
+        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="cPeer">对方</div>
+        <div class="chat-head-sub" id="cPeerSub"></div>
+      </div>
+    </div>
+    <div class="back" id="cGoOrder" title="查看订单"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></div>
+  </div>
+  <div class="chat-prod" id="chatProd" style="display:none;"></div>
+  <div class="chat-area" id="chatArea"></div>
+  <div class="chat-foot">
+    <div class="quick-row" id="quickRow"></div>
+    <div class="stk-panel" id="stkPanel"></div>
+    <div class="input-row">
+      <div class="stk-btn" id="stkBtn">😀</div>
+      <div class="input-box"><input id="chatInput" placeholder="说点什么…"></div>
+      <div class="send" id="chatSend"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- 消息列表页 -->
+<div class="view" id="view-msgs">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">消息列表</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="msg-list" id="msgList"></div>
+</div>
+
+<!-- 我的发布/订单列表页 -->
+<div class="view" id="view-mylist">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle" id="myListTitle">列表</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="msg-list" id="myListBody"></div>
+</div>
+
+<!-- 个人中心页 -->
+<div class="view" id="view-profile">
+  <div class="me-top">
+    <div class="me-row">
+      <div class="avatar" id="meAvatar">我</div>
+      <div>
+        <div class="me-name" id="meName">…</div>
+        <div class="me-bio" id="meBio">校园闲置用户</div>
+      </div>
+      <div class="me-edit" id="editProfile">编辑资料</div>
+    </div>
+    <div class="me-online">
+      <div class="mo"><b id="moDaily">–</b><span>日均在线</span></div>
+      <i></i>
+      <div class="mo"><b id="moHours">–</b><span>常规在线</span></div>
+      <i></i>
+      <div class="mo"><b id="moReply">–</b><span>平均回复</span></div>
+    </div>
+  </div>
+  <div class="me-body">
+    <div class="card stat-card">
+      <div class="stat stat-link" data-list="pub"><b id="stPub">0</b><span>发布</span></div>
+      <div style="width:1px;background:var(--line);"></div>
+      <div class="stat stat-link" data-list="sold"><b id="stSold">0</b><span>卖出</span></div>
+      <div style="width:1px;background:var(--line);"></div>
+      <div class="stat stat-link" data-list="bought"><b id="stBought">0</b><span>买入</span></div>
+    </div>
+    <div class="me-list">
+      <div class="card me-item" id="goOrders">
+        <div class="mico" style="background:var(--orange-soft);">🧾</div>
+        <div class="mt">我的订单</div><span class="badge" id="ordBadge">0 个进行中</span><span class="arrow">›</span>
+      </div>
+      <div class="card me-item" data-sub="sub-fav">
+        <div class="mico" style="background:#E3F0DF;">❤️</div>
+        <div class="mt">收藏</div><span class="arrow">›</span>
+      </div>
+      <div class="sublist" id="sub-fav"></div>
+      <div class="card me-item" id="goHistory">
+        <div class="mico" style="background:#EDE4F3;">👣</div>
+        <div class="mt">浏览记录</div><span class="arrow">›</span>
+      </div>
+      <div class="card me-item" id="goSupport">
+        <div class="mico" style="background:#FBE3DE;">💬</div>
+        <div class="mt">客服反馈</div><span class="arrow">›</span>
+      </div>
+    </div>
+    <div class="btn btn-ghost logout-btn" id="logoutBtn">退出登录</div>
+  </div>
+</div>
+
+<!-- 客服反馈页 -->
+<div class="view" id="view-support">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">客服中心</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="faq-wrap">
+    <div class="sec-title">常见问题 · 点击直接提问</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+      <div class="card faq-card" data-q="商品有问题怎么办？"><div class="fico">🧐</div><div class="q">商品有问题怎么办？</div><span style="color:var(--text3);">›</span></div>
+      <div class="card faq-card" data-q="卖家不发货怎么办？"><div class="fico">🚚</div><div class="q">卖家不发货怎么办？</div><span style="color:var(--text3);">›</span></div>
+      <div class="card faq-card" data-q="如何申请退款？"><div class="fico">💸</div><div class="q">如何申请退款？</div><span style="color:var(--text3);">›</span></div>
+    </div>
+  </div>
+  <div class="chat-area" id="csArea"></div>
+  <div class="cs-input-row">
+    <div class="plus-btn" id="csUpload">＋</div>
+    <div class="input-box" style="height:42px;"><input id="csInput" placeholder="描述你遇到的问题…"></div>
+    <div class="send" id="csSend"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></div>
+  </div>
+</div>
+
+<!-- 发布上传页 -->
+<div class="view" id="view-publish">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle" id="pubTitle">发布闲置</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="pub-body">
+    <div>
+      <div class="pub-label">拍拍你的闲置 <small>第一张为封面 · 最多 4 张图</small></div>
+      <div class="upload-grid" id="upGrid"></div>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    </div>
+    <div class="card ai-card">
+      <div class="ai-head">
+        <span class="ai-badge">AI 识别</span>
+        <span style="font-size:12px;color:var(--text2);" id="aiState">上传照片后自动识别</span>
+        <span class="refresh" id="aiRefresh">↻ 重新识别</span>
+      </div>
+      <div class="tag-row" id="aiTags"></div>
+      <div class="tag-pick-row"><div class="tag-pick-btn" id="tagPickBtn">☰ 从全部标签中选择（可搜索）</div></div>
+    </div>
+    <div class="form-box"><span class="rmb">¥</span><input id="pubPrice" type="text" inputmode="decimal" placeholder="0.00"></div>
+    <div class="stock-row">
+      <div class="stock-box">📦 库存<input id="pubStock" type="number" min="1" max="99" value="1"><span class="stock-tip">卖出一件自动减一，0 件自动下架</span></div>
+    </div>
+    <div class="rec-box" id="pubRec" style="display:none;"><span class="rb-ico">🦢</span><div class="rb-main"></div><div class="rb-fill" id="recFill">一键填入</div></div>
+    <div class="form-box" style="position:relative;display:block;"><textarea id="pubDesc" rows="3" placeholder="描述一下物品的成色、购买时间、交易方式…" style="padding-bottom:24px;"></textarea><div class="ai-desc-btn" id="aiDescBtn">🦢 AI 生成描述</div></div>
+    <div>
+      <div class="pub-label" style="margin-bottom:8px;">成色</div>
+      <div class="grade-row" id="gradeRow">
+        <div class="grade" data-g="全新">全新</div>
+        <div class="grade on" data-g="九成新">九成新</div>
+        <div class="grade" data-g="八成新">八成新</div>
+        <div class="grade" data-g="明显使用痕迹">有痕迹</div>
+      </div>
+    </div>
+    <div>
+      <div class="pub-label" style="margin-bottom:8px;">议价设置</div>
+      <div class="cut-row" id="cutRow">
+        <div class="cut-chip on" data-cut="接受小刀">接受小刀</div>
+        <div class="cut-chip" data-cut="不接受小刀">不接受小刀</div>
+      </div>
+    </div>
+    <div>
+      <div class="pub-label" style="margin-bottom:8px;">交易方式</div>
+      <div class="cut-row" id="tradeRow">
+        <div class="cut-chip on" data-trade="线下面交">线下面交</div>
+        <div class="cut-chip" data-trade="送到楼下">送到楼下</div>
+      </div>
+      <div class="form-box trade-note-box">
+        <input id="tradeNote" type="text" maxlength="30" placeholder="希望在哪里面交，如：东门驿站门口">
+      </div>
+      <div class="pub-tip">卖家备注会展示给买家，买下单后也可以备注自己的位置</div>
+    </div>
+  </div>
+  <div style="padding:12px 18px calc(24px + env(safe-area-inset-bottom,0px));flex-shrink:0;">
+    <div class="btn btn-orange pub-btn" id="pubSubmit">发布闲置</div>
+    <div class="pub-hint" id="pubImgHint">请至少上传一张商品图片</div>
+  </div>
+</div>
+
+<!-- 订单状态页 -->
+<div class="view" id="view-order">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">订单详情</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="order-scroll" id="orderScroll"></div>
+  <div class="order-foot" id="orderFoot"></div>
+</div>
+
+<!-- 校内中转站页面 -->
+<div class="view" id="view-station">
+  <div class="navbar" style="border-bottom:1px solid var(--line);background:rgba(255,252,246,.9);">
+    <div class="back" data-back><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="ntitle">校内站点</div>
+    <div style="width:34px;"></div>
+  </div>
+  <div class="station-note">
+    <div class="nico">🏫</div>
+    <div>选择一个离你最近的站点。物品送达站点后，<b style="color:#C96F2E;">由买家现场验货确认</b>，确认无误后完成交易，货款才会转给卖家，双方都放心。</div>
+  </div>
+  <div class="station-list" id="stationList">
+    <div class="card station on" data-name="东门驿站">
+      <div class="sico" style="background:var(--orange-soft);">🚪</div>
+      <div class="sinfo"><b>东门驿站</b><span>距离你 300m · 营业 9:00–21:00 · 当前空闲</span></div>
+      <div class="radio"></div>
+    </div>
+    <div class="card station" data-name="图书馆站点">
+      <div class="sico" style="background:var(--latte-bg);">📚</div>
+      <div class="sinfo"><b>图书馆站点</b><span>距离你 650m · 营业 8:00–22:00 · 繁忙</span></div>
+      <div class="radio"></div>
+    </div>
+    <div class="card station" data-name="宿舍区站点">
+      <div class="sico" style="background:#E3F0DF;">🛏️</div>
+      <div class="sinfo"><b>宿舍区站点</b><span>距离你 1.1km · 营业 10:00–20:00 · 空闲</span></div>
+      <div class="radio"></div>
+    </div>
+  </div>
+  <div class="card order-tip" style="margin:14px 16px 0;" id="stationTip">📦 暂无进行中订单，可先收藏常用的验货站点。</div>
+  <div class="station-foot" style="margin-top:auto;">
+    <div class="btn btn-orange" id="stationBtn">保存站点偏好</div>
+  </div>
+</div>
+
+<!-- 分类筛选面板 -->
+<div class="overlay" id="catOverlay">
+  <div class="cat-sheet">
+    <div class="cs-head">
+      <b>分类筛选</b>
+      <span class="cs-clear" id="catClear">清空筛选</span>
+      <div class="cs-close" id="catClose">✕</div>
+    </div>
+    <div class="cs-body" id="catBody"></div>
+    <div class="cs-foot">
+      <div class="btn btn-ghost" id="catReset">重置</div>
+      <div class="btn btn-orange" id="catApply">查看结果</div>
+    </div>
+  </div>
+</div>
+
+<!-- 发布页标签选择面板 -->
+<div class="overlay" id="tagOverlay">
+  <div class="cat-sheet">
+    <div class="cs-head">
+      <b>选择商品标签</b>
+      <span class="cs-clear" id="tagClear">清空</span>
+      <div class="cs-close" id="tagClose">✕</div>
+    </div>
+    <div style="padding:0 18px 12px;flex-shrink:0;">
+      <div class="search" style="height:40px;box-shadow:none;border:1px solid var(--line);background:var(--card);">
+        <svg class="ic" width="15" height="15" viewBox="0 0 24 24" style="color:var(--text3);flex-shrink:0;"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="tagSearch" placeholder="搜索标签，如：耳机、教材、收纳…" style="font-size:13px;">
+      </div>
+    </div>
+    <div class="cs-body" id="tagList"></div>
+    <div class="cs-foot">
+      <div class="btn btn-orange" id="tagDone">完成（已选 <span id="tagCount">0</span> 个标签）</div>
+    </div>
+  </div>
+</div>
+
+<!-- 广场发帖面板 -->
+<div class="overlay" id="postOverlay">
+  <div class="cat-sheet">
+    <div class="cs-head">
+      <b>发布水聊帖子</b>
+      <div class="cs-close" id="postClose">✕</div>
+    </div>
+    <div class="cs-body" style="padding:10px 18px;">
+      <div class="form-box" style="display:block;">
+        <textarea id="postText" rows="5" maxlength="600" placeholder="聊点校园日常、求组队、拼单、吐槽都可以…（600 字内）"></textarea>
+      </div>
+      <div class="upload-grid" id="postGrid"></div>
+      <div class="post-tools">
+        <div class="post-tool" id="postAddImg">📷 发图片（最多 3 张）</div>
+        <div class="post-tool" id="postStkBtn">😀 表情包</div>
+      </div>
+      <div class="stk-panel in-sheet" id="postStkRow"></div>
+      <input type="file" id="postFile" accept="image/*" multiple hidden>
+    </div>
+    <div class="cs-foot">
+      <div class="btn btn-orange" id="postSubmit">🦢 发布到广场</div>
+    </div>
+  </div>
+</div>
+
+<!-- 闲鹅推荐价说明弹窗 -->
+<div class="overlay" id="recOverlay">
+  <div class="rec-modal">
+    <div class="rc-head">
+      <span class="rc-goose">🦢</span>
+      <b>闲鹅推荐价</b>
+      <div class="cs-close" id="recClose">✕</div>
+    </div>
+    <div id="recBody"></div>
+  </div>
+</div>
+
+<!-- 图片大图查看器：支持双指缩放 / 双击放大 / 单指拖动 -->
+<div class="overlay viewer-overlay" id="viewerOverlay">
+  <div class="viewer-close" id="viewerClose">✕</div>
+  <div class="viewer-stage"><img id="viewerImg" class="viewer-img" draggable="false"></div>
+</div>
+
+<!-- 评论表情包选择面板 -->
+<div class="stk-panel" id="cmtStkPanel"></div>
+
+<!-- 底部导航 -->
+<div class="tabbar hidden" id="tabbar">
+  <div class="tab" data-tab="home"><svg class="ic" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-7h6v7"/></svg>首页</div>
+  <div class="tab" data-tab="plaza"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>广场</div>
+  <div class="tab" data-tab="publish"><div class="tab-publish">＋</div>发布</div>
+  <div class="tab" data-tab="msgs"><svg class="ic" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>消息<span class="unread" id="unreadBadge">0</span></div>
+  <div class="tab" data-tab="profile"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>我的</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
